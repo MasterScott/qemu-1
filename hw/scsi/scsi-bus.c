@@ -20,7 +20,7 @@ static void scsi_target_free_buf(SCSIRequest *req);
 static Property scsi_props[] = {
     DEFINE_PROP_UINT32("channel", SCSIDevice, channel, 0),
     DEFINE_PROP_UINT32("scsi-id", SCSIDevice, id, -1),
-    DEFINE_PROP_UINT32("lun", SCSIDevice, lun, -1),
+    DEFINE_PROP_UINT64("lun", SCSIDevice, lun, -1),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -68,7 +68,7 @@ int scsi_bus_parse_cdb(SCSIDevice *dev, SCSICommand *cmd, uint8_t *buf,
     return rc;
 }
 
-static SCSIRequest *scsi_device_alloc_req(SCSIDevice *s, uint32_t tag, uint32_t lun,
+static SCSIRequest *scsi_device_alloc_req(SCSIDevice *s, uint32_t tag, uint64_t lun,
                                           uint8_t *buf, void *hba_private)
 {
     SCSIDeviceClass *sc = SCSI_DEVICE_GET_CLASS(s);
@@ -163,7 +163,7 @@ static void scsi_qdev_realize(DeviceState *qdev, Error **errp)
         return;
     }
     if (dev->lun != -1 && dev->lun > bus->info->max_lun) {
-        error_setg(errp, "bad scsi device lun: %d", dev->lun);
+        error_setg(errp, "bad scsi device lun: %"PRIu64"", dev->lun);
         return;
     }
 
@@ -385,7 +385,7 @@ struct SCSITargetReq {
     int buf_len;
 };
 
-static void store_lun(uint8_t *outbuf, int lun)
+static void store_lun(uint8_t *outbuf, uint64_t lun)
 {
     if (lun < 256) {
         outbuf[1] = lun;
@@ -631,7 +631,7 @@ static const struct SCSIReqOps reqops_target_command = {
 
 
 SCSIRequest *scsi_req_alloc(const SCSIReqOps *reqops, SCSIDevice *d,
-                            uint32_t tag, uint32_t lun, void *hba_private)
+                            uint32_t tag, uint64_t lun, void *hba_private)
 {
     SCSIRequest *req;
     SCSIBus *bus = scsi_bus_from_device(d);
@@ -656,7 +656,7 @@ SCSIRequest *scsi_req_alloc(const SCSIReqOps *reqops, SCSIDevice *d,
     return req;
 }
 
-SCSIRequest *scsi_req_new(SCSIDevice *d, uint32_t tag, uint32_t lun,
+SCSIRequest *scsi_req_new(SCSIDevice *d, uint32_t tag, uint64_t lun,
                           uint8_t *buf, void *hba_private)
 {
     SCSIBus *bus = DO_UPCAST(SCSIBus, qbus, d->qdev.parent_bus);
@@ -1576,9 +1576,9 @@ static char *scsibus_get_dev_path(DeviceState *dev)
 
     id = qdev_get_dev_path(hba);
     if (id) {
-        path = g_strdup_printf("%s/%d:%d:%d", id, d->channel, d->id, d->lun);
+        path = g_strdup_printf("%s/%d:%d:%"PRIu64"", id, d->channel, d->id, d->lun);
     } else {
-        path = g_strdup_printf("%d:%d:%d", d->channel, d->id, d->lun);
+        path = g_strdup_printf("%d:%d:%"PRIu64"", d->channel, d->id, d->lun);
     }
     g_free(id);
     return path;
@@ -1587,11 +1587,11 @@ static char *scsibus_get_dev_path(DeviceState *dev)
 static char *scsibus_get_fw_dev_path(DeviceState *dev)
 {
     SCSIDevice *d = SCSI_DEVICE(dev);
-    return g_strdup_printf("channel@%x/%s@%x,%x", d->channel,
+    return g_strdup_printf("channel@%x/%s@%x,%"PRIx64"", d->channel,
                            qdev_fw_name(dev), d->id, d->lun);
 }
 
-SCSIDevice *scsi_device_find(SCSIBus *bus, int channel, int id, int lun)
+SCSIDevice *scsi_device_find(SCSIBus *bus, int channel, int id, uint64_t lun)
 {
     BusChild *kid;
     SCSIDevice *target_dev = NULL;
@@ -1618,6 +1618,7 @@ static int put_scsi_requests(QEMUFile *f, void *pv, size_t size,
     SCSIDevice *s = pv;
     SCSIBus *bus = DO_UPCAST(SCSIBus, qbus, s->qdev.parent_bus);
     SCSIRequest *req;
+    uint32_t lun;
 
     QTAILQ_FOREACH(req, &s->requests, next) {
         assert(!req->io_canceled);
@@ -1626,8 +1627,9 @@ static int put_scsi_requests(QEMUFile *f, void *pv, size_t size,
 
         qemu_put_sbyte(f, req->retry ? 1 : 2);
         qemu_put_buffer(f, req->cmd.buf, sizeof(req->cmd.buf));
+        lun = (uint32_t)(req->lun >> 32);
         qemu_put_be32s(f, &req->tag);
-        qemu_put_be32s(f, &req->lun);
+        qemu_put_be32s(f, &lun);
         if (bus->info->save_request) {
             bus->info->save_request(f, req);
         }
@@ -1656,7 +1658,7 @@ static int get_scsi_requests(QEMUFile *f, void *pv, size_t size,
         qemu_get_buffer(f, buf, sizeof(buf));
         qemu_get_be32s(f, &tag);
         qemu_get_be32s(f, &lun);
-        req = scsi_req_new(s, tag, lun, buf, NULL);
+        req = scsi_req_new(s, tag, (uint64_t)lun << 32, buf, NULL);
         req->retry = (sbyte == 1);
         if (bus->info->load_request) {
             req->hba_private = bus->info->load_request(f, req);

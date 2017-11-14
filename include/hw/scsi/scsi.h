@@ -23,9 +23,9 @@ struct SCSIRequest {
     SCSIDevice        *dev;
     const SCSIReqOps  *ops;
     uint32_t          refcount;
-    uint32_t          tag;
-    uint32_t          lun;
     uint32_t          status;
+    uint32_t          tag;
+    uint64_t          lun;
     void              *hba_private;
     size_t            resid;
     SCSICommand       cmd;
@@ -61,7 +61,7 @@ typedef struct SCSIDeviceClass {
     void (*realize)(SCSIDevice *dev, Error **errp);
     int (*parse_cdb)(SCSIDevice *dev, SCSICommand *cmd, uint8_t *buf,
                      void *hba_private);
-    SCSIRequest *(*alloc_req)(SCSIDevice *s, uint32_t tag, uint32_t lun,
+    SCSIRequest *(*alloc_req)(SCSIDevice *s, uint32_t tag, uint64_t lun,
                               uint8_t *buf, void *hba_private);
     void (*unit_attention_reported)(SCSIDevice *s);
 } SCSIDeviceClass;
@@ -79,7 +79,7 @@ struct SCSIDevice
     uint32_t sense_len;
     QTAILQ_HEAD(, SCSIRequest) requests;
     uint32_t channel;
-    uint32_t lun;
+    uint64_t lun;
     int blocksize;
     int type;
     uint64_t max_lba;
@@ -156,8 +156,8 @@ void scsi_bus_legacy_handle_cmdline(SCSIBus *bus, bool deprecated);
 void scsi_legacy_handle_cmdline(void);
 
 SCSIRequest *scsi_req_alloc(const SCSIReqOps *reqops, SCSIDevice *d,
-                            uint32_t tag, uint32_t lun, void *hba_private);
-SCSIRequest *scsi_req_new(SCSIDevice *d, uint32_t tag, uint32_t lun,
+                            uint32_t tag, uint64_t lun, void *hba_private);
+SCSIRequest *scsi_req_new(SCSIDevice *d, uint32_t tag, uint64_t lun,
                           uint8_t *buf, void *hba_private);
 int32_t scsi_req_enqueue(SCSIRequest *req);
 SCSIRequest *scsi_req_ref(SCSIRequest *req);
@@ -183,7 +183,7 @@ void scsi_device_report_change(SCSIDevice *dev, SCSISense sense);
 void scsi_device_unit_attention_reported(SCSIDevice *dev);
 void scsi_generic_read_device_identification(SCSIDevice *dev);
 int scsi_device_get_sense(SCSIDevice *dev, uint8_t *buf, int len, bool fixed);
-SCSIDevice *scsi_device_find(SCSIBus *bus, int channel, int target, int lun);
+SCSIDevice *scsi_device_find(SCSIBus *bus, int channel, int target, uint64_t lun);
 
 /* scsi-generic.c. */
 extern const SCSIReqOps scsi_generic_req_ops;
