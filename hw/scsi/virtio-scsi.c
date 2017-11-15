@@ -415,6 +415,31 @@ static void virtio_scsi_handle_ctrl_req(VirtIOSCSI *s, VirtIOSCSIReq *req)
             req->resp.an.event_actual = 0;
             req->resp.an.response = VIRTIO_SCSI_S_OK;
         }
+    } else if (type == VIRTIO_SCSI_T_RESCAN) {
+        if (virtio_scsi_parse_req(req, sizeof(VirtIOSCSIRescanReq),
+                                  sizeof(VirtIOSCSIRescanResp)) < 0) {
+            virtio_scsi_bad_req(req);
+            return;
+        } else {
+            BusChild *kid;
+            SCSIDevice *dev = NULL;
+
+            QTAILQ_FOREACH(kid, &s->bus.qbus.children, sibling) {
+                DeviceState *qdev = kid->child;
+                SCSIDevice *d = SCSI_DEVICE(qdev);
+
+                if (d->id >= req->req.rescan.next_id) {
+                    dev = d;
+                    break;
+                }
+            }
+            if (dev) {
+                req->resp.rescan.id = dev->id;
+                memcpy(&req->resp.rescan.wwn, &dev->port_wwn, 8);
+            } else {
+                req->resp.rescan.id = -1;
+            }
+        }
     }
     if (r == 0) {
         virtio_scsi_complete_req(req);
@@ -927,6 +952,8 @@ static Property virtio_scsi_properties[] = {
                                            VIRTIO_SCSI_F_HOTPLUG, true),
     DEFINE_PROP_BIT("param_change", VirtIOSCSI, host_features,
                                                 VIRTIO_SCSI_F_CHANGE, true),
+    DEFINE_PROP_BIT("rescan", VirtIOSCSI, host_features,
+                                          VIRTIO_SCSI_F_RESCAN, true),
     DEFINE_PROP_LINK("iothread", VirtIOSCSI, parent_obj.conf.iothread,
                      TYPE_IOTHREAD, IOThread *),
     DEFINE_PROP_END_OF_LIST(),

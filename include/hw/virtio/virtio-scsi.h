@@ -42,6 +42,8 @@ typedef struct virtio_scsi_ctrl_tmf_req VirtIOSCSICtrlTMFReq;
 typedef struct virtio_scsi_ctrl_tmf_resp VirtIOSCSICtrlTMFResp;
 typedef struct virtio_scsi_ctrl_an_req VirtIOSCSICtrlANReq;
 typedef struct virtio_scsi_ctrl_an_resp VirtIOSCSICtrlANResp;
+typedef struct virtio_scsi_rescan_req VirtIOSCSIRescanReq;
+typedef struct virtio_scsi_rescan_resp VirtIOSCSIRescanResp;
 typedef struct virtio_scsi_event VirtIOSCSIEvent;
 typedef struct virtio_scsi_config VirtIOSCSIConfig;
 
@@ -116,12 +118,14 @@ typedef struct VirtIOSCSIReq {
         VirtIOSCSICmdResp     cmd;
         VirtIOSCSICtrlTMFResp tmf;
         VirtIOSCSICtrlANResp  an;
+        VirtIOSCSIRescanResp  rescan;
         VirtIOSCSIEvent       event;
     } resp;
     union {
         VirtIOSCSICmdReq      cmd;
         VirtIOSCSICtrlTMFReq  tmf;
         VirtIOSCSICtrlANReq   an;
+        VirtIOSCSIRescanReq   rescan;
     } req;
 } VirtIOSCSIReq;
 
