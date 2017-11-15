@@ -149,6 +149,48 @@ static inline SCSIBus *scsi_bus_from_device(SCSIDevice *d)
     return DO_UPCAST(SCSIBus, qbus, d->qdev.parent_bus);
 }
 
+static inline uint64_t scsi_lun_from_int(unsigned int lun)
+{
+    if (lun < 256) {
+        /* Use peripheral addressing */
+        return (uint64_t)lun << 48;
+    } else if (lun < 0x3fff) {
+        /* Use flat space addressing */
+        return ((uint64_t)lun | 0x4000) << 48;
+    }
+    /* Return Logical unit not specified addressing */
+    return (uint64_t)-1;
+}
+
+static inline int scsi_lun_to_int(uint64_t lun64)
+{
+    return (lun64 >> 48) & 0x3fff;
+}
+
+static inline uint64_t scsi_lun_from_str(uint8_t *lun)
+{
+    int i;
+    uint64_t lun64 = 0;
+
+    for (i = 0; i < 8; i += 2) {
+        lun64 |= (uint64_t)lun[i] << ((i + 1) * 8) |
+            (uint64_t)lun[i + 1] << (i * 8);
+    }
+    return lun64;
+}
+
+static inline void scsi_lun_to_str(uint64_t lun64, uint8_t *lun)
+{
+    int i;
+
+    memset(lun, 0, 8);
+    for (i = 6; i >= 0; i -= 2) {
+        lun[i] = (lun64 >> 8) & 0xFF;
+        lun[i + 1] = lun64 & 0xFF;
+        lun64 = lun64 >> 16;
+    }
+}
+
 SCSIDevice *scsi_bus_legacy_add_drive(SCSIBus *bus, BlockBackend *blk,
                                       int unit, bool removable, int bootindex,
                                       const char *serial, Error **errp);
