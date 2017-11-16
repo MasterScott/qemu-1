@@ -668,7 +668,7 @@ static int scsi_disk_emulate_inquiry(SCSIRequest *req, uint8_t *outbuf)
             }
 
             if (s->qdev.port_wwn) {
-                outbuf[buflen++] = 0x61; // SAS / Binary
+                outbuf[buflen++] = s->qdev.protocol << 8 | 0x1; // Binary
                 outbuf[buflen++] = 0x93; // PIV / Target port / NAA
                 outbuf[buflen++] = 0;    // reserved
                 outbuf[buflen++] = 8;
@@ -677,7 +677,7 @@ static int scsi_disk_emulate_inquiry(SCSIRequest *req, uint8_t *outbuf)
             }
 
             if (s->port_index) {
-                outbuf[buflen++] = 0x61; // SAS / Binary
+                outbuf[buflen++] = s->qdev.protocol << 8 | 0x1; // Binary
                 outbuf[buflen++] = 0x94; // PIV / Target port / relative target port
                 outbuf[buflen++] = 0;    // reserved
                 outbuf[buflen++] = 4;
