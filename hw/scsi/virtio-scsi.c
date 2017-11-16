@@ -435,9 +435,19 @@ static void virtio_scsi_handle_ctrl_req(VirtIOSCSI *s, VirtIOSCSIReq *req)
             }
             if (dev) {
                 req->resp.rescan.id = dev->id;
-                memcpy(&req->resp.rescan.wwn, &dev->port_wwn, 8);
+                req->resp.rescan.transport = dev->protocol;
+                if (dev->protocol == SCSI_PROTOCOL_FCP &&
+                    dev->port_wwn) {
+                    uint64_t node_wwn = dev->port_wwn;
+
+                    node_wwn = ((uint64_t)1 << 56) |
+                        (dev->port_wwn & ~((uint64_t)0xff << 56));
+                    stq_be_p(req->resp.rescan.node_wwn, node_wwn);
+                }
+                stq_be_p(req->resp.rescan.port_wwn, dev->port_wwn);
             } else {
                 req->resp.rescan.id = -1;
+                req->resp.rescan.transport = SCSI_PROTOCOL_UNSPEC;
             }
         }
     }

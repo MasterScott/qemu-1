@@ -2355,6 +2355,18 @@ static void scsi_realize(SCSIDevice *dev, Error **errp)
         return;
     }
 
+    if (dev->protocol == SCSI_PROTOCOL_FCP) {
+        if (!s->qdev.port_wwn) {
+            error_setg(errp,
+                       "Missing port_wwn for FCP protocol");
+            return;
+        }
+        if ((s->qdev.port_wwn >> 60) != 0x02) {
+            error_setg(errp,
+                       "port_wwn is not a IEEE Extended identifier");
+            return;
+        }
+    }
     if (dev->type == TYPE_DISK) {
         blkconf_geometry(&dev->conf, NULL, 65535, 255, 255, &err);
         if (err) {
