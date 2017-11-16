@@ -2361,7 +2361,7 @@ static void scsi_realize(SCSIDevice *dev, Error **errp)
                        "Missing port_wwn for FCP protocol");
             return;
         }
-        if ((s->qdev.port_wwn >> 60) != 0x02) {
+        if (!s->qdev.node_wwn && (s->qdev.port_wwn >> 60) != 0x02) {
             error_setg(errp,
                        "port_wwn is not a IEEE Extended identifier");
             return;

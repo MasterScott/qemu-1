@@ -85,6 +85,7 @@ struct SCSIDevice
     uint8_t protocol;
     uint64_t max_lba;
     uint64_t wwn;
+    uint64_t node_wwn;
     uint64_t port_wwn;
 };
 

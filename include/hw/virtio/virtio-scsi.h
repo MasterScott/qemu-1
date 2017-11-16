@@ -54,8 +54,9 @@ struct VirtIOSCSIConf {
     uint32_t cmd_per_lun;
 #ifdef CONFIG_VHOST_SCSI
     char *vhostfd;
-    char *wwpn;
 #endif
+    char *wwpn;
+    char *wwnn;
     CharBackend chardev;
     uint32_t boot_tpgt;
     IOThread *iothread;
